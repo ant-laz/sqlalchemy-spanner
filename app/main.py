@@ -21,17 +21,17 @@
 # you can execute this module by running python -m app.main
 ###############################################################################
 
-# fetch environment variables to tell SQLAlchemy where to find our DB
-instanceid = os.environ["SPANNER_INSTANCE_ID"]
-databaseid = os.environ["SPANNER_DATABASE_ID"]
-projectid = os.environ["PROJECT_ID"]
-
 import os
 from sqlalchemy import (
     Table, Column, 
     Integer, Date, Boolean, Numeric, String, DateTime,
     Engine, create_engine, MetaData,
 )
+
+# fetch environment variables to tell SQLAlchemy where to find our DB
+instanceid = os.environ["SPANNER_INSTANCE_ID"]
+databaseid = os.environ["SPANNER_DATABASE_ID"]
+projectid = os.environ["PROJECT_ID"]
 
 # The start of any SQLAlchemy application is an object called the Engine. 
 # This object acts as a central source of connections to a particular database
@@ -53,6 +53,14 @@ asset = Table(
     Column("SystemModstamp", DateTime),
     Column("OBE_Duration_c", Numeric),
     Column("isDeleted", Boolean),
+)
+
+asset = Table(
+    "Product",
+    metadata,
+    Column("id", String(1024), primary_key=True),
+    Column("creationDate", Date),
+    Column("isLocked", Boolean),
 )
 
 # Once we have a MetaData object, we can declare some Table objects
