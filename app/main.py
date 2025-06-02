@@ -21,12 +21,24 @@
 # you can execute this module by running python -m app.main
 ###############################################################################
 
+import datetime
 import os
-from sqlalchemy import (
-    Table, Column, 
-    Integer, Date, Boolean, Numeric, String, DateTime,
-    Engine, create_engine, MetaData,
-)
+import uuid
+from typing import List
+from sqlalchemy import create_engine
+from sqlalchemy import Engine
+from sqlalchemy import Integer
+from sqlalchemy import Date
+from sqlalchemy import Boolean
+from sqlalchemy import Numeric
+from sqlalchemy import String
+from sqlalchemy import DateTime
+from sqlalchemy.schema import ForeignKey
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 
 # fetch environment variables to tell SQLAlchemy where to find our DB
 instanceid = os.environ["SPANNER_INSTANCE_ID"]
@@ -41,27 +53,67 @@ engine: Engine = create_engine(
     echo=True
 )
 
-# Database metadata refers to objects that represnt Tables & Columns
-# MetaData is a collection (e.g. py dict) that stores Tables
-metadata: MetaData = MetaData()
+# The DeclarativeBase class is used to generate a new base class 
+# from which new classes to be mapped may inherit from
+# The Declarative Base refers to a MetaData collection that is created for us automatically
+# Base.metadata
+class Base(DeclarativeBase):
+    pass
 
-asset = Table(
-    "Asset",
-    metadata,
-    Column("AccountId", String(1024), primary_key=True),
-    Column("CreatedDate", Date),
-    Column("SystemModstamp", DateTime),
-    Column("OBE_Duration_c", Numeric),
-    Column("isDeleted", Boolean),
-)
+# Create some tables in spanner based on these great examples
+# https://github.com/googleapis/python-spanner-sqlalchemy/blob/main/samples/model.py
 
-asset = Table(
-    "Product",
-    metadata,
-    Column("id", String(1024), primary_key=True),
-    Column("creationDate", Date),
-    Column("isLocked", Boolean),
-)
+class Singer(Base):
+    __tablename__ = "singers"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    first_name: Mapped[str] = mapped_column(String(200), nullable=True)
+    last_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    birthdate: Mapped[datetime.date] = mapped_column(Date, nullable=True)
+    albums: Mapped[List["Album"]] = relationship( back_populates="singer", cascade="all, delete-orphan" )
+    concerts: Mapped[List["Concert"]] = relationship( back_populates="singer")
 
-# Once we have a MetaData object, we can declare some Table objects
-metadata.create_all(engine)
+class Album(Base):
+    __tablename__ = "albums"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    release_date: Mapped[datetime.date] = mapped_column(Date, nullable=True)
+    singer_id: Mapped[str] = mapped_column(ForeignKey("singers.id"))
+    singer: Mapped["Singer"] = relationship(back_populates="albums")
+
+class Concert(Base):
+    __tablename__ = "concerts"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    venue_name: Mapped[str] = mapped_column(String(10), primary_key=True  )
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    singer_id: Mapped[str] = mapped_column( String(36), ForeignKey("singers.id") )
+    singer: Mapped["Singer"] = relationship(back_populates="concerts")
+
+Base.metadata.create_all(engine)
+
+# Write some data into these tables
+
+with Session(engine) as session:
+    singer = Singer(
+        id=str(uuid.uuid4()),
+        first_name="John",
+        last_name="Smith",
+        albums=[
+            Album(
+                id=str(uuid.uuid4()),
+                title="Rainforest",
+            ),
+            Album(
+                id=str(uuid.uuid4()),
+                title="Butterflies",
+            ),
+        ],
+    )
+    concert = Concert(
+        id=str(uuid.uuid4()),
+        venue_name="O2Arena",
+        title="the comeback tour",
+        singer = singer
+    )
+    session.add(singer)
+    session.add(concert)
+    session.commit()
