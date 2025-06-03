@@ -32,6 +32,7 @@ from app.db.model import Base
 from app.db.model import Singer
 from app.db.model import Album
 from app.db.model import Track
+from app.db.model import Discography
 
 # fetch environment variables to tell SQLAlchemy where to find our DB
 instanceid = os.environ["SPANNER_INSTANCE_ID"]
@@ -118,8 +119,14 @@ def create_view_singer_album_tracks(engine: Engine):
     pass
 
 def read_view_singer_album_tracks(engine: Engine):
-    pass
+    stmt = (
+        select(Discography)
+    )
+    with Session(engine) as session:
+        for row in session.execute(stmt):
+            print(row)
 
 #create_tables(engine)
 #write_data_to_tables(engine)
-query_singer_album_tracks(engine)
+#query_singer_album_tracks(engine)
+read_view_singer_album_tracks(engine)

@@ -70,3 +70,19 @@ class Track(Base):
 
     def __repr__(self) -> str:
         return f"Track(id={self.id!r}, title={self.title!r}, track_number={self.track_number!r})"
+    
+class Discography(Base):
+    __tablename__ = "discography"
+    singer_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    first_name: Mapped[str] = mapped_column(String(200), nullable=True)
+    last_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    birthdate: Mapped[datetime.date] = mapped_column(Date, nullable=True)
+    album_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    album_title: Mapped[str] = mapped_column(String(200), nullable=False)
+    release_date: Mapped[datetime.date] = mapped_column(Date, nullable=True)
+    track_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    track_number: Mapped[int] = mapped_column(Integer)
+    track_title: Mapped[str] = mapped_column(String(200), nullable=False)
+
+    def __repr__(self) -> str:
+        return f"Track(id={self.singer_id!r}, title={self.first_name!r}, track_number={self.last_name!r})"
