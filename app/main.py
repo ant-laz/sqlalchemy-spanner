@@ -27,6 +27,7 @@ import uuid
 from sqlalchemy import create_engine
 from sqlalchemy import Engine
 from sqlalchemy import select
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.db.model import Base
 from app.db.model import Singer
@@ -116,7 +117,30 @@ def query_singer_album_tracks(engine: Engine):
             print(row)
 
 def create_view_singer_album_tracks(engine: Engine):
-    pass
+    view_definition = (
+    "CREATE OR REPLACE VIEW discography "
+    "SQL SECURITY INVOKER " 
+    "AS SELECT "
+    "singers.id as singer_id, "
+    "singers.first_name, "
+    "singers.last_name, "
+    "singers.birthdate, "
+    "albums.id AS album_id, "
+    "albums.title AS album_title, "
+    "albums.release_date, "
+    "tracks.id AS track_id, "
+    "tracks.track_number, "
+    "tracks.title AS track_title, "
+    "FROM "
+    "singers "
+    "JOIN albums "
+    "ON singers.id = albums.singer_id "
+    "JOIN tracks "
+    "ON albums.id = tracks.album_id; "
+    )
+    with engine.connect() as conn:
+        conn.execute(text(view_definition))
+        conn.commit()
 
 def read_view_singer_album_tracks(engine: Engine):
     stmt = (
@@ -129,4 +153,5 @@ def read_view_singer_album_tracks(engine: Engine):
 #create_tables(engine)
 #write_data_to_tables(engine)
 #query_singer_album_tracks(engine)
-read_view_singer_album_tracks(engine)
+create_view_singer_album_tracks(engine)
+#read_view_singer_album_tracks(engine)
