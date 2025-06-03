@@ -21,24 +21,17 @@
 # you can execute this module by running python -m app.main
 ###############################################################################
 
-import datetime
+
 import os
 import uuid
-from typing import List
 from sqlalchemy import create_engine
 from sqlalchemy import Engine
-from sqlalchemy import Integer
-from sqlalchemy import Date
-from sqlalchemy import Boolean
-from sqlalchemy import Numeric
-from sqlalchemy import String
-from sqlalchemy import DateTime
-from sqlalchemy.schema import ForeignKey
+from sqlalchemy import select
 from sqlalchemy.orm import Session
-from sqlalchemy.orm import relationship
-from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.orm import Mapped
-from sqlalchemy.orm import mapped_column
+from app.db.model import Base
+from app.db.model import Singer
+from app.db.model import Album
+from app.db.model import Track
 
 # fetch environment variables to tell SQLAlchemy where to find our DB
 instanceid = os.environ["SPANNER_INSTANCE_ID"]
@@ -53,67 +46,80 @@ engine: Engine = create_engine(
     echo=True
 )
 
-# The DeclarativeBase class is used to generate a new base class 
-# from which new classes to be mapped may inherit from
-# The Declarative Base refers to a MetaData collection that is created for us automatically
-# Base.metadata
-class Base(DeclarativeBase):
+def create_tables(engine: Engine):
+    Base.metadata.create_all(engine)
+
+def write_data_to_tables(engine: Engine):
+    with Session(engine) as session:
+        singer1 = Singer(
+            id=str(uuid.uuid4()),
+            first_name="Daft",
+            last_name="Punk",
+            albums=[
+                Album(
+                    id=str(uuid.uuid4()),
+                    title="Random Access Memories",
+                    tracks=[
+                        Track(id=str(uuid.uuid4()), track_number=1, title="Give Life Back to Music"),
+                        Track(id=str(uuid.uuid4()), track_number=2, title="The Game of Love"),
+                    ]
+                ),
+                Album(
+                    id=str(uuid.uuid4()),
+                    title="Human After All",
+                    tracks=[
+                        Track(id=str(uuid.uuid4()), track_number=1, title="Human After All"),
+                        Track(id=str(uuid.uuid4()), track_number=2, title="The prime Time of Your Life"),
+                    ]
+                ),
+            ],
+        )
+        singer2 = Singer(
+            id=str(uuid.uuid4()),
+            first_name="George",
+            last_name="Ezra",
+            albums=[
+                Album(
+                    id=str(uuid.uuid4()),
+                    title="Gold Rush Kid",
+                    tracks=[
+                        Track(id=str(uuid.uuid4()), track_number=1, title="Anyone for You (Tiger Lily)"),
+                        Track(id=str(uuid.uuid4()), track_number=2, title="Green Green Grass"),
+                    ]
+                ),
+                Album(
+                    id=str(uuid.uuid4()),
+                    title="Staying at Tamara's",
+                    tracks=[
+                        Track(id=str(uuid.uuid4()), track_number=1, title="Pretty Shining People"),
+                        Track(id=str(uuid.uuid4()), track_number=2, title="Don't Matter Now"),
+                    ]
+                ),
+            ],
+        )
+
+        session.add(singer1)
+        session.add(singer2)
+
+        session.commit()
+
+def query_singer_album_tracks(engine: Engine):
+    stmt = (
+        select(Singer)
+        .join(Singer.albums)
+        .join(Album.tracks)
+        .add_columns(Album, Track)
+    )
+    with Session(engine) as session:
+        for row in session.execute(stmt):
+            print(row)
+
+def create_view_singer_album_tracks(engine: Engine):
     pass
 
-# Create some tables in spanner based on these great examples
-# https://github.com/googleapis/python-spanner-sqlalchemy/blob/main/samples/model.py
+def read_view_singer_album_tracks(engine: Engine):
+    pass
 
-class Singer(Base):
-    __tablename__ = "singers"
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    first_name: Mapped[str] = mapped_column(String(200), nullable=True)
-    last_name: Mapped[str] = mapped_column(String(200), nullable=False)
-    birthdate: Mapped[datetime.date] = mapped_column(Date, nullable=True)
-    albums: Mapped[List["Album"]] = relationship( back_populates="singer", cascade="all, delete-orphan" )
-    concerts: Mapped[List["Concert"]] = relationship( back_populates="singer")
-
-class Album(Base):
-    __tablename__ = "albums"
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    title: Mapped[str] = mapped_column(String(200), nullable=False)
-    release_date: Mapped[datetime.date] = mapped_column(Date, nullable=True)
-    singer_id: Mapped[str] = mapped_column(ForeignKey("singers.id"))
-    singer: Mapped["Singer"] = relationship(back_populates="albums")
-
-class Concert(Base):
-    __tablename__ = "concerts"
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    venue_name: Mapped[str] = mapped_column(String(10), primary_key=True  )
-    title: Mapped[str] = mapped_column(String(200), nullable=False)
-    singer_id: Mapped[str] = mapped_column( String(36), ForeignKey("singers.id") )
-    singer: Mapped["Singer"] = relationship(back_populates="concerts")
-
-Base.metadata.create_all(engine)
-
-# Write some data into these tables
-
-with Session(engine) as session:
-    singer = Singer(
-        id=str(uuid.uuid4()),
-        first_name="John",
-        last_name="Smith",
-        albums=[
-            Album(
-                id=str(uuid.uuid4()),
-                title="Rainforest",
-            ),
-            Album(
-                id=str(uuid.uuid4()),
-                title="Butterflies",
-            ),
-        ],
-    )
-    concert = Concert(
-        id=str(uuid.uuid4()),
-        venue_name="O2Arena",
-        title="the comeback tour",
-        singer = singer
-    )
-    session.add(singer)
-    session.add(concert)
-    session.commit()
+#create_tables(engine)
+#write_data_to_tables(engine)
+query_singer_album_tracks(engine)
